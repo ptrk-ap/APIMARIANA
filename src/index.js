@@ -1,17 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
+
+const envFile = fs.existsSync(path.join(__dirname, '..', '.env.production'))
+  ? '.env.production'
+  : '.env';
+
+dotenv.config({ path: path.join(__dirname, '..', envFile), quiet: true });
+
 const express = require('express');
 const authMiddleware = require('./authMiddleware');
 const authRoutes = require('./routes/authRoutes');
 const { ipRateLimiter } = require('./middlewares/rateLimiter');
 
 const app = express();
-const envFile = fs.existsSync(path.join(__dirname, '..', '.env.production'))
-  ? '.env.production'
-  : '.env';
-
-dotenv.config({ path: path.join(__dirname, '..', envFile), quiet: true });
 
 const db = require('./config/database');
 
@@ -84,7 +86,7 @@ async function consultarNlp(req, res) {
 }
 
 app.post('/consultar', authMiddleware, consultarNlp);
-app.get('/consultar', authMiddleware, consultarNlp);
+//app.get('/consultar', authMiddleware, consultarNlp);
 
 app.get('/', authMiddleware, (req, res) => {
   return res.json({

@@ -7,7 +7,7 @@ const testApi = async () => {
     const res = await fetch(`${BASE_URL}/auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuario: 'admin', senha: 'senha123' })
+      body: JSON.stringify({ usuario: 'testuser', senha: 'testpassword' })
     });
     const data = await res.json();
     console.log('Status Login:', res.status);
