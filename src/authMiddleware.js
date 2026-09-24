@@ -1,4 +1,14 @@
-const jwt = require('jsonwebtoken');
+// Middleware de autenticação por token estático.
+// Os tokens válidos são definidos na variável de ambiente ALLOWED_TOKENS
+// no arquivo .env.production, separados por vírgula.
+// Exemplo: ALLOWED_TOKENS=token-maquina-a,token-maquina-b
+
+const allowedTokens = new Set(
+  (process.env.ALLOWED_TOKENS || '')
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)
+);
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -7,25 +17,25 @@ const authMiddleware = (req, res, next) => {
     return res.status(401).json({ error: 'Token ausente' });
   }
 
-  const parts = authHeader.split(' ');
+  const [scheme, token] = authHeader.split(' ');
 
-  if (parts.length !== 2) {
-    return res.status(401).json({ error: 'Erro no formato do Token' });
+  if (
+    !scheme ||
+    scheme.toLowerCase() !== 'bearer' ||
+    !token
+  ) {
+    return res.status(401).json({
+      error: 'Formato inválido. Use: Bearer <token>'
+    });
   }
 
-  const [scheme, token] = parts;
-
-  if (!/^Bearer$/i.test(scheme)) {
-    return res.status(401).json({ error: 'Token mal formatado' });
+  if (!allowedTokens.has(token)) {
+    return res.status(403).json({
+      error: 'Token não autorizado'
+    });
   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.client = decoded;
-    return next();
-  } catch (err) {
-    return res.status(403).json({ error: 'Token inválido' });
-  }
+  next();
 };
 
 module.exports = authMiddleware;

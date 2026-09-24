@@ -10,7 +10,6 @@ dotenv.config({ path: path.join(__dirname, '..', envFile), quiet: true });
 
 const express = require('express');
 const authMiddleware = require('./authMiddleware');
-const authRoutes = require('./routes/authRoutes');
 const { ipRateLimiter } = require('./middlewares/rateLimiter');
 
 const app = express();
@@ -20,9 +19,7 @@ const db = require('./config/database');
 const requiredEnv = [
   'PORT',
   'DATABASE_URL',
-  'JWT_SECRET',
-  'ADMIN_USERNAME',
-  'ADMIN_PASSWORD',
+  'ALLOWED_TOKENS',
   'NLP_API_URL'
 ];
 const missingEnv = requiredEnv.filter((name) => !process.env[name]);
@@ -49,9 +46,6 @@ app.get('/health', async (_req, res) => {
 
 // Aplica o Rate Limit em todas as rotas da API, exceto na verificação de saúde.
 app.use(ipRateLimiter);
-
-// Roteador de Autenticação
-app.use('/auth', authRoutes);
 
 async function consultarNlp(req, res) {
   const frase = req.body?.frase ?? req.query.frase;
@@ -88,11 +82,8 @@ async function consultarNlp(req, res) {
 app.post('/consultar', authMiddleware, consultarNlp);
 //app.get('/consultar', authMiddleware, consultarNlp);
 
-app.get('/', authMiddleware, (req, res) => {
-  return res.json({
-    mensagem: 'Bem-vindo à API Express. Endpoint raiz protegido.',
-    dadosClient: req.client
-  });
+app.get('/', authMiddleware, (_req, res) => {
+  return res.json({ mensagem: 'Bem-vindo à API MARIANA.' });
 });
 
 const PORT = process.env.PORT;
