@@ -1,11 +1,11 @@
 # API Mariana
 
-API Node.js para autenticação e consulta de dados. A aplicação utiliza PostgreSQL e foi preparada para execução em contêineres Docker.
+API Node.js (Gateway / Proxy) para autenticação por token e consulta ao serviço de processamento de linguagem natural (NLPMARIANA). A aplicação é totalmente *stateless* e preparada para execução em contêineres Docker.
 
 ## Requisitos
 
 - **Docker** e **Docker Compose** (recomendado para produção e homologação)
-- Alternativamente para desenvolvimento local sem contêiner: **Node.js** (versão LTS >= 20.x) e **PostgreSQL** acessível
+- Alternativamente para desenvolvimento local sem contêiner: **Node.js** (versão LTS >= 20.x)
 
 ---
 
@@ -20,7 +20,6 @@ cp .env.example .env
 | Variável | Obrigatória | Padrão | Descrição |
 | --- | --- | --- | --- |
 | `PORT` | Não | `3001` | Porta HTTP da API. |
-| `DATABASE_URL` | Sim | - | String de conexão do PostgreSQL (`postgresql://user:pass@host:5432/db`). |
 | `ALLOWED_TOKENS` | Sim | - | Tokens estáticos autorizados a acessar a API, separados por vírgula. |
 | `NLP_API_URL` | Sim | - | URL interna do `POST /consultar` do serviço NLPMARIANA. |
 | `NODE_ENV` | Não | `production` | Ambiente de execução (`production` ou `development`). |
@@ -106,7 +105,7 @@ npm run dev
 
 | Método | Rota | Autenticação | Finalidade |
 | --- | --- | --- | --- |
-| `GET` | `/health` | Não | Healthcheck da API e validação da conexão com o PostgreSQL. |
+| `GET` | `/health` | Não | Healthcheck da API (retorna 200 `{ status: "ok" }`). |
 | `POST` | `/consultar` | Sim (`Bearer <token>`) | Encaminha uma consulta ao serviço NLPMARIANA (`{ "frase": "..." }`). |
 | `GET` | `/` | Sim (`Bearer <token>`) | Endpoint de boas-vindas / teste de conexão autenticada. |
 
@@ -133,8 +132,7 @@ docker inspect --format='{{json .State.Health.Status}}' api-mariana
 A aplicação trata os sinais `SIGTERM` e `SIGINT` emitidos pelo Docker ao parar o contêiner (`docker stop`). Ao receber o sinal:
 1. Deixa de aceitar novas requisições HTTP;
 2. Conclui as requisições em andamento;
-3. Fecha o pool de conexões com o PostgreSQL;
-4. Encerra o processo de forma limpa.
+3. Encerra o processo de forma limpa.
 
 ### Proxy Reverso
 

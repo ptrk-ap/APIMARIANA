@@ -1,8 +1,8 @@
 # ==========================================
 # Base Image
-# Node 22 slim para compatibilidade nativa (bcrypt, pg) e imagem enxuta
+# Node 22 Alpine: ultra-leve, seguro e rápido (~50MB)
 # ==========================================
-FROM node:22-bookworm-slim
+FROM node:22-alpine
 
 # Define ambiente de produção padrão
 ENV NODE_ENV=production

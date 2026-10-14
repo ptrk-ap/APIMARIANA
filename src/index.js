@@ -3,10 +3,10 @@ require('dotenv').config();
 const express = require('express');
 const authMiddleware = require('./authMiddleware');
 const { ipRateLimiter } = require('./middlewares/rateLimiter');
-const db = require('./config/database');
+
+const app = express();
 
 const requiredEnv = [
-  'DATABASE_URL',
   'ALLOWED_TOKENS',
   'NLP_API_URL'
 ];
@@ -17,19 +17,13 @@ if (missingEnv.length > 0) {
   process.exit(1);
 }
 
-// OBRIGATÓRIO: Captura o IP real do cliente quando operando atrás do Nginx
+// OBRIGATÓRIO: Captura o IP real do cliente quando operando atrás de proxy/Nginx
 app.set('trust proxy', 1);
 
 app.use(express.json());
 
-app.get('/health', async (_req, res) => {
-  try {
-    await db.raw('SELECT 1');
-    return res.status(200).json({ status: 'ok' });
-  } catch (error) {
-    console.error('Falha na verificação de saúde do banco:', error.message);
-    return res.status(503).json({ status: 'indisponível' });
-  }
+app.get('/health', (_req, res) => {
+  return res.status(200).json({ status: 'ok' });
 });
 
 // Aplica o Rate Limit em todas as rotas da API, exceto na verificação de saúde.
@@ -93,14 +87,7 @@ async function shutdown(signal) {
   }, 10000);
   forceExitTimer.unref();
 
-  server.close(async (error) => {
-    try {
-      await db.destroy();
-      console.log('Conexões com o banco encerradas com sucesso.');
-    } catch (dbError) {
-      console.error('Falha ao encerrar conexões com o banco:', dbError.message);
-    }
-
+  server.close((error) => {
     if (error) {
       console.error('Falha ao encerrar o servidor HTTP:', error.message);
       process.exit(1);

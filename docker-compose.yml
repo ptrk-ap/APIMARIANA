@@ -18,20 +18,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-
-# Exemplo de configuração se desejar subir o PostgreSQL via Docker:
-#  postgres:
-#    image: postgres:16-alpine
-#    container_name: postgres-mariana
-#    restart: unless-stopped
-#    environment:
-#      POSTGRES_USER: mariana
-#      POSTGRES_PASSWORD: sua_senha_aqui
-#      POSTGRES_DB: principal
-#    ports:
-#      - "5432:5432"
-#    volumes:
-#      - pgdata:/var/lib/postgresql/data
-#
-#volumes:
-#  pgdata:
