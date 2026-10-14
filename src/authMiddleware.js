@@ -1,6 +1,5 @@
 // Middleware de autenticação por token estático.
-// Os tokens válidos são definidos na variável de ambiente ALLOWED_TOKENS
-// no arquivo .env.production, separados por vírgula.
+// Os tokens válidos são definidos na variável de ambiente ALLOWED_TOKENS, separados por vírgula.
 // Exemplo: ALLOWED_TOKENS=token-maquina-a,token-maquina-b
 
 const allowedTokens = new Set(

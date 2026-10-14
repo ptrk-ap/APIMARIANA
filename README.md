@@ -1,102 +1,141 @@
 # API Mariana
 
-API Node.js para autenticação e consulta de dados. A aplicação usa PostgreSQL e foi preparada para execução em produção com PM2.
+API Node.js para autenticação e consulta de dados. A aplicação utiliza PostgreSQL e foi preparada para execução em contêineres Docker.
 
 ## Requisitos
 
-- Node.js (versão LTS recomendada)
-- PostgreSQL acessível pela aplicação
-- PM2 instalado globalmente no servidor de produção
+- **Docker** e **Docker Compose** (recomendado para produção e homologação)
+- Alternativamente para desenvolvimento local sem contêiner: **Node.js** (versão LTS >= 20.x) e **PostgreSQL** acessível
+
+---
 
 ## Configuração do ambiente
 
-Crie o arquivo `.env.production` a partir do modelo `.env.example` e informe os valores do ambiente:
+Crie o arquivo `.env` a partir do modelo `.env.example` e informe os valores do ambiente:
 
 ```bash
-cp .env.example .env.production
+cp .env.example .env
 ```
 
-| Variável | Descrição |
-| --- | --- |
-| `PORT` | Porta HTTP da API. |
-| `DATABASE_URL` | String de conexão do PostgreSQL. |
-| `JWT_SECRET` | Chave usada para assinar e validar tokens JWT. |
-| `ADMIN_USERNAME` | Usuário administrativo inicial. |
-| `ADMIN_PASSWORD` | Senha administrativa inicial. |
-| `NLP_API_URL` | URL interna do `POST /consultar` do serviço NLPMARIANA. |
+| Variável | Obrigatória | Padrão | Descrição |
+| --- | --- | --- | --- |
+| `PORT` | Não | `3001` | Porta HTTP da API. |
+| `DATABASE_URL` | Sim | - | String de conexão do PostgreSQL (`postgresql://user:pass@host:5432/db`). |
+| `ALLOWED_TOKENS` | Sim | - | Tokens estáticos autorizados a acessar a API, separados por vírgula. |
+| `NLP_API_URL` | Sim | - | URL interna do `POST /consultar` do serviço NLPMARIANA. |
+| `NODE_ENV` | Não | `production` | Ambiente de execução (`production` ou `development`). |
 
-Nunca envie `.env.production` ao repositório.
+> **Aviso:** Nunca envie o arquivo `.env` para o repositório Git.
 
-## Execução local
+---
+
+## Execução com Docker (Recomendado)
+
+### 1. Usando Docker Compose
+
+Para construir a imagem e subir o serviço em segundo plano:
+
+```bash
+docker compose up -d --build
+```
+
+Ou usando o script do `package.json`:
+
+```bash
+npm run docker:up
+```
+
+Para acompanhar os logs em tempo real:
+
+```bash
+docker compose logs -f api
+# ou
+npm run docker:logs
+```
+
+Para parar os contêineres:
+
+```bash
+docker compose down
+# ou
+npm run docker:down
+```
+
+### 2. Usando Docker CLI diretamente
+
+1. **Build da imagem:**
+   ```bash
+   docker build -t api-mariana .
+   ```
+
+2. **Execução do contêiner:**
+   ```bash
+   docker run -d \
+     --name api-mariana \
+     --restart unless-stopped \
+     -p 3001:3001 \
+     --env-file .env \
+     api-mariana
+   ```
+
+---
+
+## Execução local (sem Docker)
+
+Instale as dependências:
 
 ```bash
 npm install
+```
+
+Inicie o servidor em modo de produção:
+
+```bash
 npm start
 ```
 
-Para desenvolvimento com reinício automático:
+Ou em modo de desenvolvimento (com reinício automático via `nodemon`):
 
 ```bash
 npm run dev
 ```
 
-## Endpoints principais
+---
+
+## Endpoints da API
 
 | Método | Rota | Autenticação | Finalidade |
 | --- | --- | --- | --- |
-| `GET` | `/health` | Não | Verifica a disponibilidade da API e do banco. |
-| `POST` | `/auth` | Não | Autenticação. |
-| `POST` | `/consultar` | Sim | Encaminha uma consulta ao NLPMARIANA. |
-| `GET` | `/consultar?frase=...` | Sim | Alternativa compatível para encaminhar uma consulta. |
-| `GET` | `/` | Sim | Endpoint raiz protegido. |
+| `GET` | `/health` | Não | Healthcheck da API e validação da conexão com o PostgreSQL. |
+| `POST` | `/consultar` | Sim (`Bearer <token>`) | Encaminha uma consulta ao serviço NLPMARIANA (`{ "frase": "..." }`). |
+| `GET` | `/` | Sim (`Bearer <token>`) | Endpoint de boas-vindas / teste de conexão autenticada. |
 
-As rotas protegidas exigem token JWT. `POST /consultar` espera `{ "frase": "..." }` e encaminha a solicitação ao `POST /consultar` do NLPMARIANA, usando `NLP_API_URL`. O limite padrão é de 100 requisições por IP a cada 15 minutos; `/health` não é limitado para permitir monitoramento pelo proxy.
+> **Nota:** As rotas protegidas validam o token no cabeçalho `Authorization: Bearer <TOKEN>`, comparando-o com os valores configurados em `ALLOWED_TOKENS`.
 
-## Produção com PM2
+### Rate Limiting
 
-Instale as dependências da aplicação:
+A API possui limitação de taxa por IP de 100 requisições a cada 15 minutos. A rota `/health` não é limitada para permitir monitoramento contínuo por orquestradores (Docker, Kubernetes) ou proxies reversos.
 
-```bash
-npm ci --omit=dev
-```
+---
 
-Inicie a API com o perfil de produção:
+## Operação e Monitoramento
 
-```bash
-pm2 start ecosystem.config.js --env production
-pm2.cmd start ecosystem.config.js --env production
-```
+### Verificação de Saúde (Health Check)
 
-O processo registrado chama-se `api-mariana`. A configuração inicia três instâncias em cluster, reinicia processos que falhem e limita cada processo a 500 MB de memória.
-
-Após confirmar que a API iniciou corretamente, registre o estado atual do PM2:
+O contêiner possui um `HEALTHCHECK` embutido configurado para verificar a rota `/health` periodicamente:
 
 ```bash
-pm2 save
+docker inspect --format='{{json .State.Health.Status}}' api-mariana
 ```
 
-Para reiniciar após alterações de código ou de ambiente:
+### Encerramento Gracioso (Graceful Shutdown)
 
-```bash
-pm2 reload ecosystem.config.js --env production --update-env
-```
+A aplicação trata os sinais `SIGTERM` e `SIGINT` emitidos pelo Docker ao parar o contêiner (`docker stop`). Ao receber o sinal:
+1. Deixa de aceitar novas requisições HTTP;
+2. Conclui as requisições em andamento;
+3. Fecha o pool de conexões com o PostgreSQL;
+4. Encerra o processo de forma limpa.
 
-## Logs e operação
+### Proxy Reverso
 
-Os logs são mantidos pelo PM2 em `~/.pm2/logs` no usuário que executa o serviço. Habilite a rotação uma vez por servidor:
-
-```bash
-pm2 install pm2-logrotate
-```
-
-Comandos úteis:
-
-```bash
-pm2 status
-pm2 logs api-mariana
-pm2 monit
-```
-
-## Proxy reverso
-
-Em produção, exponha a aplicação por Nginx ou Caddy com HTTPS. A configuração atual considera um proxy reverso à frente da aplicação; ajuste `trust proxy` se a topologia tiver mais de um proxy.
+Em produção, exponha a aplicação atrás de um proxy reverso (Nginx, Traefik, Caddy, etc.) com terminação SSL/TLS (HTTPS). A aplicação está configurada com `trust proxy` para capturar adequadamente o IP real do cliente.

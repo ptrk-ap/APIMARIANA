@@ -4,9 +4,9 @@ const dotenv = require('dotenv');
 const bcrypt = require('bcrypt');
 const knex = require('knex');
 
-const envFile = fs.existsSync(path.join(__dirname, '..', '.env.production'))
-  ? '.env.production'
-  : '.env';
+const envFile = fs.existsSync(path.join(__dirname, '..', '.env'))
+  ? '.env'
+  : '.env.production';
 
 dotenv.config({ path: path.join(__dirname, '..', envFile), quiet: true });
 

@@ -1,23 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const dotenv = require('dotenv');
-
-const envFile = fs.existsSync(path.join(__dirname, '..', '.env.production'))
-  ? '.env.production'
-  : '.env';
-
-dotenv.config({ path: path.join(__dirname, '..', envFile), quiet: true });
+require('dotenv').config();
 
 const express = require('express');
 const authMiddleware = require('./authMiddleware');
 const { ipRateLimiter } = require('./middlewares/rateLimiter');
-
-const app = express();
-
 const db = require('./config/database');
 
 const requiredEnv = [
-  'PORT',
   'DATABASE_URL',
   'ALLOWED_TOKENS',
   'NLP_API_URL'
@@ -86,7 +74,7 @@ app.get('/', authMiddleware, (_req, res) => {
   return res.json({ mensagem: 'Bem-vindo à API MARIANA.' });
 });
 
-const PORT = process.env.PORT;
+const PORT = Number(process.env.PORT) || 3001;
 const server = app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
@@ -98,9 +86,17 @@ async function shutdown(signal) {
   shuttingDown = true;
   console.log(`Sinal ${signal} recebido. Encerrando a API...`);
 
+  // Timeout forçado para garantir encerramento do contêiner caso conexões fiquem pendentes
+  const forceExitTimer = setTimeout(() => {
+    console.error('Encerramento forçado por tempo limite.');
+    process.exit(1);
+  }, 10000);
+  forceExitTimer.unref();
+
   server.close(async (error) => {
     try {
       await db.destroy();
+      console.log('Conexões com o banco encerradas com sucesso.');
     } catch (dbError) {
       console.error('Falha ao encerrar conexões com o banco:', dbError.message);
     }

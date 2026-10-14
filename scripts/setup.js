@@ -11,7 +11,12 @@
  *  5. Realiza um teste de login direto via AuthService e valida o token JWT
  */
 
-require('dotenv').config({ path: '.env.production' });
+const fs = require('fs');
+if (fs.existsSync('.env')) {
+  require('dotenv').config({ path: '.env' });
+} else {
+  require('dotenv').config({ path: '.env.production' });
+}
 
 const db = require('../src/config/database');
 const bcrypt = require('bcrypt');
