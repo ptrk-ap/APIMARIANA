@@ -1,6 +1,3 @@
-Entendido! Aqui está o seu arquivo `docker compose` com exatamente a adição solicitada:
-
-```yaml
 services:
   api:
     build:
@@ -27,5 +24,3 @@ services:
 networks:
   rede-mariana:
     external: true
-
-```
