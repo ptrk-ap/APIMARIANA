@@ -22,6 +22,7 @@ cp .env.example .env
 | `PORT` | Não | `3001` | Porta HTTP da API. |
 | `ALLOWED_TOKENS` | Sim | - | Tokens estáticos autorizados a acessar a API, separados por vírgula. |
 | `NLP_API_URL` | Sim | - | URL interna do `POST /consultar` do serviço NLPMARIANA. |
+| `GEMINI_API_KEY` | Não | - | Chave de API do Google Gemini (ou separadas por vírgula para rotação). |
 | `NODE_ENV` | Não | `production` | Ambiente de execução (`production` ou `development`). |
 
 > **Aviso:** Nunca envie o arquivo `.env` para o repositório Git.
@@ -107,6 +108,7 @@ npm run dev
 | --- | --- | --- | --- |
 | `GET` | `/health` | Não | Healthcheck da API (retorna 200 `{ status: "ok" }`). |
 | `POST` | `/consultar` | Sim (`Bearer <token>`) | Encaminha uma consulta ao serviço NLPMARIANA (`{ "frase": "..." }`). |
+| `POST` | `/consultaTratada` | Sim (`Bearer <token>`) | Refina a pergunta com IA (Gemini) e encaminha ao NLPMARIANA (`{ "frase": "..." }`). |
 | `GET` | `/` | Sim (`Bearer <token>`) | Endpoint de boas-vindas / teste de conexão autenticada. |
 
 > **Nota:** As rotas protegidas validam o token no cabeçalho `Authorization: Bearer <TOKEN>`, comparando-o com os valores configurados em `ALLOWED_TOKENS`.

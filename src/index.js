@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const authMiddleware = require('./authMiddleware');
 const { ipRateLimiter } = require('./middlewares/rateLimiter');
+const { processApiQuery } = require('./services/geminiService');
 
 const app = express();
 
@@ -29,13 +30,7 @@ app.get('/health', (_req, res) => {
 // Aplica o Rate Limit em todas as rotas da API, exceto na verificação de saúde.
 app.use(ipRateLimiter);
 
-async function consultarNlp(req, res) {
-  const frase = req.body?.frase ?? req.query.frase;
-
-  if (!frase || typeof frase !== 'string') {
-    return res.status(400).json({ erro: "Campo 'frase' é obrigatório" });
-  }
-
+async function despacharParaNlp(frase, res) {
   try {
     const respostaNlp = await fetch(process.env.NLP_API_URL, {
       method: 'POST',
@@ -61,8 +56,42 @@ async function consultarNlp(req, res) {
   }
 }
 
+async function consultarNlp(req, res) {
+  const frase = req.body?.frase ?? req.query.frase;
+
+  if (!frase || typeof frase !== 'string') {
+    return res.status(400).json({ erro: "Campo 'frase' é obrigatório" });
+  }
+
+  return despacharParaNlp(frase, res);
+}
+
+async function consultarNlpTratado(req, res) {
+  const frase = req.body?.frase ?? req.query.frase;
+
+  if (!frase || typeof frase !== 'string') {
+    return res.status(400).json({ erro: "Campo 'frase' é obrigatório" });
+  }
+
+  let fraseFinal = frase;
+  try {
+    const resultadoIa = await processApiQuery(frase);
+    if (resultadoIa?.texto_corrigido) {
+      fraseFinal = resultadoIa.texto_corrigido;
+      console.log(`[ConsultaTratada] Original: "${frase}" | Tratada: "${fraseFinal}"`);
+    }
+  } catch (error) {
+    console.warn('[ConsultaTratada] Erro ao tratar consulta com Gemini:', error.message);
+  }
+
+  return despacharParaNlp(fraseFinal, res);
+}
+
 app.post('/consultar', authMiddleware, consultarNlp);
 //app.get('/consultar', authMiddleware, consultarNlp);
+
+app.post('/consultaTratada', authMiddleware, consultarNlpTratado);
+//app.get('/consultaTratada', authMiddleware, consultarNlpTratado);
 
 app.get('/', authMiddleware, (_req, res) => {
   return res.json({ mensagem: 'Bem-vindo à API MARIANA.' });
