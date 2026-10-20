@@ -1,11 +1,42 @@
 require('dotenv').config();
 
 const express = require('express');
+const cors = require('cors');
 const authMiddleware = require('./authMiddleware');
 const { ipRateLimiter } = require('./middlewares/rateLimiter');
 const { processApiQuery } = require('./services/geminiService');
 
 const app = express();
+
+const defaultAllowedOrigins = [
+  'https://front-mariana.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+
+const envAllowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]));
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permite chamadas sem origin (como mobile apps, curl ou Postman)
+    if (!origin) return callback(null, true);
+
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Bloqueado por CORS: ${origin}`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
 const requiredEnv = [
   'ALLOWED_TOKENS',

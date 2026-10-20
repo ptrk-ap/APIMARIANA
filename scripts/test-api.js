@@ -93,6 +93,35 @@ async function testeConsultar() {
   );
 }
 
+async function testeConsultaTratada() {
+  console.log('\n📋 Endpoint /consultaTratada');
+
+  // Sem token
+  const r1 = await fetch(`${BASE_URL}/consultaTratada`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ frase: 'teste' }),
+  });
+  log('POST /consultaTratada sem token → 401', r1.status === 401);
+
+  // Sem body
+  const r2 = await request('POST', '/consultaTratada', {});
+  log('POST /consultaTratada sem frase → 400', r2.status === 400, r2.json?.erro);
+
+  // Frase inválida (número)
+  const r3 = await request('POST', '/consultaTratada', { frase: 12345 });
+  log('POST /consultaTratada frase inválida → 400', r3.status === 400);
+
+  // Requisição válida (pode retornar 200 ou 502 dependendo do NLP estar no ar)
+  const r4 = await request('POST', '/consultaTratada', { frase: 'quanto que gastou na celsa com saude' });
+  const ok4 = [200, 502].includes(r4.status);
+  log(
+    `POST /consultaTratada frase válida → ${r4.status}`,
+    ok4,
+    r4.status === 502 ? '(NLP offline — esperado em ambiente de teste)' : JSON.stringify(r4.json)
+  );
+}
+
 async function testeRotaNaoExistente() {
   console.log('\n📋 Rota inexistente');
   const { status } = await request('GET', '/rota-que-nao-existe');
@@ -113,6 +142,7 @@ async function testeRotaNaoExistente() {
     await testeHealth();
     await testeRaiz();
     await testeConsultar();
+    await testeConsultaTratada();
     await testeRotaNaoExistente();
   } catch (err) {
     console.error('\n🚨 Erro ao executar testes:', err.message);
